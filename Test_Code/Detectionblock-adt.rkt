@@ -1,0 +1,24 @@
+#lang r5rs
+
+(#%require (only racket/base error))
+
+(#%provide Detectionblock-adt)
+
+; =======================================
+; __Description__:
+; __Parameters__:
+; __Ouput__: Detectionblock object
+; __Procedures__:
+; __Comment__:
+; =======================================
+
+(define (detectionblock-adt id from to)
+  
+  
+  (define (dispatch msg)
+    (cond ((eq? msg 'id) id)
+          ((eq? msg 'type) 'detection-block)
+          ((eq? msg 'from) from)
+          ((eq? msg 'to) to)
+          (else (error ": not supported: " msg))))
+    dispatch)

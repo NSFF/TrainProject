@@ -1,0 +1,24 @@
+#lang r5rs
+
+(#%require (only racket/base error))
+
+(#%provide node-adt)
+
+; =======================================
+; __Description__:
+; __Parameters__:
+; __Ouput__: Node object
+; __Procedures__:
+; __Comment__:
+; =======================================
+
+(define (node-adt id x y)
+  
+  
+  (define (dispatch msg)
+    (cond ((eq? msg 'id) id)
+          ((eq? msg 'type) 'node)
+          ((eq? msg 'x) x)
+          ((eq? msg 'y) y)
+          (else (error ": not supported: " msg))))
+    dispatch)

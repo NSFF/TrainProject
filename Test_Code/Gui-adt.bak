@@ -1,0 +1,209 @@
+#lang racket
+
+(#%require (only racket/base error))
+(#%require racket/gui/base)
+(#%require racket/draw)
+(#%require racket/class)
+
+(#%provide gui-adt)
+
+; =======================================
+; __Description__:
+; __Parameters__:
+; __Ouput__: Gui object
+; __Procedures__:
+; __Comment__:
+; =======================================
+
+(define (gui-adt title width height)
+  (let ((FRAME 'default)
+        (PANEL 'default)
+        (CANVAS 'default)
+        (BITMAP 'default)
+        (BM-DC 'default)
+        (RAILWAY-ADT 'default)
+        (TRAIN-LST '())
+        (SPHERE-SIZE 20)
+        (ADD-TRAIN? #f)
+        (DROP-DOWN-CHOICE 'default)
+        (CHOICE-PREVIOUS 'default)
+        (CHOICE-CURRENT 'default)
+        (CHOICE-SPEED 'default))
+    
+    ; the list is currently hardcoded but will be updated in the future
+    (define prev/curr-list (list "1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13" "14" "15" "16" "17" "18" "19" "20"))
+    (define speed-list (list "0" "-1" "-0.5" "0.1" "0.2" "0.3" "0.4" "0.5" "0.6" "0.7" "0.8" "0.9" "1" "1.1" "1.2" "1.3" "1.4" "1.5" "1.6" "1.7" "1.8" "1.9" "2"))
+    
+    (define (initialize-window railway train-list get-loco-detection-block)
+      (set! RAILWAY-ADT railway)
+      (set! TRAIN-LST train-list)
+      
+      ; makes the window
+      (set! FRAME (new frame%
+                     [label title]
+                     [width width]
+                     [height height]))
+      ; Horizontal panel
+      (set! PANEL (new horizontal-panel% [parent FRAME]
+                       [style '(border)]
+                       [spacing 50]
+                       [alignment '(center center)]))
+
+      ; A bitmap where you can draw on
+      (set! BITMAP (make-bitmap (- width 200) (- height 100)))
+      ; Makes a drawing context of the bitmap
+      (set! BM-DC (make-object bitmap-dc% BITMAP))
+      
+      ; makes a canvas ready to draw things on
+      (set! CANVAS (new canvas% [parent FRAME]
+                      [paint-callback ;paint-callback will draw everything mentioned below on startup
+                       (lambda (canvas dc)
+                         (send dc draw-bitmap BITMAP 0 0)
+                         )]
+                      [min-width (- width 300)]
+                      [min-height (- height 200)]))
+      
+      ; Makes a button in the frame
+      (new button% [parent PANEL]
+           [label "Add"]
+           ; Callback procedure for a button click:
+           [callback (lambda (button event)
+                       (set! ADD-TRAIN? #t))])
+      
+      ; Makes a dropdown menu
+      (set! CHOICE-PREVIOUS (new choice%
+                                   (label "Previous-node ")
+                                   (parent PANEL)
+                                   (choices prev/curr-list)))
+      (set! CHOICE-CURRENT (new choice%
+                                  (label "Current-node ")
+                                  (parent PANEL)
+                                  (choices prev/curr-list)))
+      (set! CHOICE-SPEED (new choice%
+                                  (label "Speed ")
+                                  (parent PANEL)
+                                  (choices speed-list)))
+      
+      (initialize-railway BM-DC get-loco-detection-block); drawing the tracks and detection-blocks
+      
+      ; Show the window
+      (send FRAME show #t)
+      )
+      
+
+  
+    (define (draw-edge-line dc node-1 node-2 pen-color)
+      (define edge-readjusting
+        (/ SPHERE-SIZE  2))
+      (send dc set-pen pen-color)
+      (send dc draw-line
+            (+ (node-1 'x) edge-readjusting)
+            (+ (node-1 'y) edge-readjusting)
+            (+ (node-2 'x) edge-readjusting)
+            (+ (node-2 'y) edge-readjusting)))
+    
+    (define (draw-switches dc)
+      (define switch-pen (make-object pen% "BLUE" 5 'solid))
+      (define no-switch-pen (make-object pen% "RED" 5 'solid))
+      (define no-pen (new pen% [style 'transparent]))
+      (define node-brush (new brush% [color "BLACK"]))
+      (let loop ((n 1))
+        (cond ((< n (RAILWAY-ADT 'order))
+               (let ((node ((RAILWAY-ADT 'node-dispatch) n)))
+                 (cond ((eq? 'railswitch (node 'type))
+                        (let* ((prev-node-nr (node 'previous-node))
+                               (prev-node ((RAILWAY-ADT 'node-dispatch) prev-node-nr))
+                               (node-1-nr (node 'current-next-node))
+                               (node-1 ((RAILWAY-ADT 'node-dispatch) node-1-nr))
+                               (node-2-nr (node 'not-used-node))
+                               (node-2 ((RAILWAY-ADT 'node-dispatch) node-2-nr)))
+                          
+                          ;drawing the updated edges
+                          (draw-edge-line dc prev-node node switch-pen)
+                          (draw-edge-line dc node node-1 switch-pen)
+                          (draw-edge-line dc node node-2 no-switch-pen)
+
+                          ;redraw the spheres above the switches
+                          (send dc set-pen no-pen)
+                          (send dc set-brush node-brush)
+                          (send dc draw-ellipse (node 'x) (node 'y) SPHERE-SIZE SPHERE-SIZE)
+                          (send dc draw-ellipse (node-1 'x) (node-1 'y) SPHERE-SIZE SPHERE-SIZE)
+                          (send dc draw-ellipse (node-2 'x) (node-2 'y) SPHERE-SIZE SPHERE-SIZE)
+                          (send dc draw-ellipse (prev-node 'x) (prev-node 'y) SPHERE-SIZE SPHERE-SIZE))))
+                 (loop (+ n 1))))))
+      (send CANVAS on-paint))
+  
+    (define (draw-train dc get-loco-detection-block)
+      (define no-pen (new pen% [style 'transparent]))
+      (define train-brush (new brush% [color "ORANGE"]))
+      
+      (define (draw train-adt)
+        (cond ((get-loco-detection-block (train-adt 'id))
+               (let ((node ((RAILWAY-ADT 'node-dispatch) (train-adt 'current-node))))
+                 (send dc set-pen no-pen)
+                 (send dc set-brush train-brush)
+                 (send dc draw-ellipse (- (node 'x) 2.5) (- (node 'y) 2.5) (+ SPHERE-SIZE 5)  (+ SPHERE-SIZE 5))))))
+      
+      (for-each draw TRAIN-LST)
+      (send CANVAS on-paint))
+    
+    (define (initialize-railway dc get-loco-detection-block)
+      (send dc clear)
+
+
+      (define track-pen (make-object pen% "BLACK" 5 'solid))
+      (define detection-block-pen (make-object pen% "GREEN" 5 'solid))
+      (define no-pen (new pen% [style 'transparent]))
+      (define no-brush (new brush% [style 'transparent]))
+      (define node-brush (new brush% [color "BLACK"]))
+    
+      (send dc set-smoothing 'aligned)
+
+    
+      (define (draw-nodes)
+        (let loop ((n 1))
+          (cond ((< n (RAILWAY-ADT 'order))
+                 (let ((node ((RAILWAY-ADT 'node-dispatch) n)))
+                   (send dc set-pen no-pen)
+                   (send dc set-brush node-brush)
+                   (send dc draw-ellipse (node 'x) (node 'y) SPHERE-SIZE SPHERE-SIZE)
+                   (loop (+ n 1)))))))
+    
+      (define (draw-edges)
+        (define (draw edge-symbol pen-color)
+          (let* ((vec (RAILWAY-ADT edge-symbol))
+                 (length (vector-length vec)))
+            (let loop ((n 0))
+              (cond ((< n length)(let* ((dispatch (vector-ref vec n))
+                                        (node-1 ((RAILWAY-ADT 'node-dispatch) (dispatch 'from)))
+                                        (node-2 ((RAILWAY-ADT 'node-dispatch) (dispatch 'to))))
+                                   (draw-edge-line dc node-1 node-2 pen-color)
+                                   (loop (+ n 1))))))))
+        (draw 'detection-block-vec detection-block-pen)
+        (draw 'track-vec track-pen))
+    
+      (draw-edges)
+      (draw-nodes)
+      
+      (draw-switches dc)
+      (draw-train dc get-loco-detection-block)
+      
+      (send CANVAS on-paint))
+
+    (define (update railway train-list get-loco-detection-block)
+      (set! TRAIN-LST train-list)
+      (set! RAILWAY-ADT railway)
+      (initialize-railway BM-DC get-loco-detection-block))
+  
+  (define (dispatch msg)
+    (cond ((eq? msg 'new) dispatch)
+          ((eq? msg 'update) update)
+          ((eq? msg 'add-train?) ADD-TRAIN?)
+          ((eq? msg 'choice-previous) (list-ref prev/curr-list (send CHOICE-PREVIOUS get-selection)))
+          ((eq? msg 'choice-current) (list-ref prev/curr-list (send CHOICE-CURRENT get-selection)))
+          ((eq? msg 'choice-speed) (list-ref speed-list(send CHOICE-SPEED get-selection)))
+          ((eq? msg 'add-train-false!) (set! ADD-TRAIN? #f))
+          ((eq? msg 'initialize-window) initialize-window)
+          (else (error ": not supported: " msg))))
+    dispatch))
+

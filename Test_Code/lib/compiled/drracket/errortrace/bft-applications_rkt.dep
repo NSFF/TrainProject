@@ -1,0 +1,1 @@
+("6.7" ("6c3d60d59d7e785db14ba5dd6d8f9ce93b31f12a" . "eabd417120c289ed445a781d9dab6e3c6dd16e7e") (collects #"errortrace" #"errortrace-key.rkt") (collects #"lib" #"bft.rkt") (collects #"lib" #"config.rkt") (collects #"r6rs" #"lang" #"reader.rkt") (collects #"r6rs" #"main.rkt") (collects #"r6rs" #"private" #"prelims.rkt") (collects #"rnrs" #"base-6.rkt"))

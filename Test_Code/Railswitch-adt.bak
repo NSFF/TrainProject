@@ -1,0 +1,56 @@
+#lang r5rs
+
+(#%require (only racket/base error))
+
+(#%provide railswitch-adt)
+
+; =======================================
+; __Description__:
+; __Parameters__:
+; __Ouput__: Railswitch object
+; __Procedures__:
+; __Comment__:
+; =======================================
+
+(define (railswitch-adt)
+  (let ((RAILSWITCH-ID 'default-id)
+        (RAILSWITCH-POS 0)
+        (RAILSWITCH-STATUS 'default-switch-id)
+        (RAILSWITCH-POS-VEC (make-vector 2 'default))
+        (PREVIOUS-NODE 0)
+        (x 0)
+        (y 0))
+
+    (define (new id rail-pos x1 y1)
+      (set! RAILSWITCH-ID id)
+      (set! RAILSWITCH-POS rail-pos)
+      (set! x x1)
+      (set! y y1)
+      dispatch)
+
+    (define (set-railswitch-pos-vec! pos1 pos2 prev)
+      (vector-set! RAILSWITCH-POS-VEC 0 pos1);pos1 and pos2 are numbers representing their location in the graph
+      (vector-set! RAILSWITCH-POS-VEC 1 pos2)
+      (set! PREVIOUS-NODE prev))
+  
+    (define (switch! number);only values possible are 1 and 2 to switch between railswitch status
+      (if (not (eq? number RAILSWITCH-STATUS))
+          (begin (set! RAILSWITCH-STATUS number)
+                 (vector-ref RAILSWITCH-POS-VEC (- number 1)))
+          (vector-ref RAILSWITCH-POS-VEC (- number 1))))
+
+    
+    (define (dispatch msg)
+      (cond ((eq? msg 'new) new)
+            ((eq? msg 'id) RAILSWITCH-ID)
+            ((eq? msg 'railswitch-pos) RAILSWITCH-POS)
+            ((eq? msg 'set-railswitch-pos-vec!) set-railswitch-pos-vec!)
+            ((eq? msg 'previous-node) PREVIOUS-NODE)
+            ((eq? msg 'current-next-node) (vector-ref RAILSWITCH-POS-VEC (- RAILSWITCH-STATUS 1))) ; gives the next node symbol currently in the switch
+            ((eq? msg 'not-used-node) (vector-ref RAILSWITCH-POS-VEC (- (if (= RAILSWITCH-STATUS 1) 2 1) 1)))
+            ((eq? msg 'switch!) switch!)
+            ((eq? msg 'type) 'railswitch)
+            ((eq? msg 'x) x)
+            ((eq? msg 'y) y)
+            (else (error ": not supported: ") msg)))
+    dispatch))

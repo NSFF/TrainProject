@@ -1,0 +1,21 @@
+#lang r5rs
+
+(#%require (only racket/base error))
+
+(#%provide Detectionblock-adt)
+
+; =======================================
+; __Description__:
+; __Parameters__:
+; __Ouput__: Detectionblock object
+; __Procedures__:
+; __Comment__:
+; =======================================
+
+(define (Detectionblock-adt)
+  
+  
+  (define (dispatch msg)
+    (cond ((eq? msg 'new) new)
+          (else (error ": not supported: " msg))))
+    dispatch)
